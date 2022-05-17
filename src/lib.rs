@@ -14,4 +14,6 @@ pub enum Error {
     NetworkProblem(reqwest::Error),
     /// Data was received, but could not be decoded
     JsonProblem(reqwest::Error),
+    /// Data was decoded, but no items were found
+    EmptyResponse,
 }

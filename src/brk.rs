@@ -111,28 +111,7 @@ struct Response {
     embedded: PerceelEmbedded,
 }
 
-#[cfg(not(feature = "mock-tests"))]
 const BRK_BASISREGISTRATIES_OVERHEID_NL: &str = "https://brk.basisregistraties.overheid.nl";
-
-#[cfg(feature = "mock-tests")]
-const BRK_BASISREGISTRATIES_OVERHEID_NL: &str = "http://localhost:8001";
-
-#[derive(Debug)]
-pub enum LotsResult {
-    Lots(Vec<Lot>),
-    EmptyResponse,
-    Error(Error),
-}
-
-impl LotsResult {
-    pub fn is_ok(&self) -> bool {
-        match self {
-            LotsResult::Lots(_) => true,
-            LotsResult::EmptyResponse => false,
-            LotsResult::Error(_) => false,
-        }
-    }
-}
 
 /// Fetch a singular lot according to its uid,
 /// which is comprised of gemeentecode, sectie and perceelnummer.
@@ -141,7 +120,7 @@ pub async fn get_lot(
     gemeentecode: &str,
     sectie: &str,
     perceelnummer: &str,
-) -> LotsResult {
+) -> Result<Vec<Lot>, Error> {
     let u = url::Url::parse_with_params(
         &format!("{}/api/v1/percelen", BRK_BASISREGISTRATIES_OVERHEID_NL),
         &[
@@ -155,17 +134,17 @@ pub async fn get_lot(
     let res_client_response = client.client.get(u.as_str()).send().await;
 
     match res_client_response {
-        Err(e) => LotsResult::Error(Error::NetworkProblem(e)),
+        Err(e) => Err(Error::NetworkProblem(e)),
         Ok(client_response) => match client_response.json().await {
-            Err(e) => LotsResult::Error(Error::JsonProblem(e)),
+            Err(e) => Err(Error::JsonProblem(e)),
             Ok(response) => {
                 let response: Response = response;
                 let lots = response.embedded.results;
 
                 if lots.is_empty() {
-                    LotsResult::EmptyResponse
+                    Err(Error::EmptyResponse)
                 } else {
-                    LotsResult::Lots(lots)
+                    Ok(lots)
                 }
             }
         },
@@ -175,10 +154,9 @@ pub async fn get_lot(
 ///
 /// Check if API is up by lookup up the TG office
 ///
-pub async fn get_brk_status(client: &BrkClient) -> LotsResult {
+pub async fn get_brk_status(client: &BrkClient) -> Result<Vec<Lot>, Error> {
     get_lot(client, "HTT02", "M", "5038").await
 }
-
 
 #[cfg(test)]
 mod test {
@@ -200,9 +178,6 @@ mod test {
 
         let result = aw!(get_lot(&brk_client, "HTT02", "M", "5038"));
 
-        assert_eq!(
-            result.is_ok(),
-            true
-        );
+        assert_eq!(result.is_ok(), true);
     }
 }

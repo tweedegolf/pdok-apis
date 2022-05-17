@@ -8,12 +8,8 @@ use serde::{Deserialize, Serialize};
 use geo::Polygon;
 use geojson::Geometry;
 
-#[cfg(not(feature = "mock-tests"))]
 const BAG_BASISREGISTRATIES_OVERHEID_NL: &str =
     "https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2";
-
-#[cfg(feature = "mock-tests")]
-const BAG_BASISREGISTRATIES_OVERHEID_NL: &str = "http://localhost:8003";
 
 pub struct BagClient {
     client: Client,
@@ -310,12 +306,6 @@ mod test {
         };
     }
 
-    #[cfg(feature = "mock-tests")]
-    pub fn get_bag_key() -> String {
-        "TEST_BAG_API_KEY".into()
-    }
-
-    #[cfg(not(feature = "mock-tests"))]
     pub fn get_bag_key() -> String {
         std::env::var("BAG_API_KEY").expect("Environment variable missing: BAG_API_KEY")
     }
@@ -331,9 +321,6 @@ mod test {
         let buildings = aw!(get_panden(&bag_client, object_id));
         let year = buildings.unwrap().first().unwrap().bouwjaar.clone();
 
-        assert_eq!(
-            year,
-            String::from("2008")
-        );
+        assert_eq!(year, String::from("2008"));
     }
 }

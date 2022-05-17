@@ -1,11 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-#[cfg(not(feature = "mock-tests"))]
 const GEODATA_NATIONAALGEOREGISTER_NL: &str = "https://geodata.nationaalgeoregister.nl";
-
-#[cfg(feature = "mock-tests")]
-const GEODATA_NATIONAALGEOREGISTER_NL: &str = "http://localhost:8002";
 
 use crate::Error::{self, *};
 
@@ -160,17 +156,11 @@ mod test {
         let suggest_doc = aw!(suggest_concrete(&client, postalcode, housenumber));
         let id = suggest_doc.unwrap().first().unwrap().id.clone();
 
-        assert_eq!(
-            id,
-            "adr-2fe93c94378bb179c424cf9918662375"
-        );
+        assert_eq!(id, "adr-2fe93c94378bb179c424cf9918662375");
 
         let lookup_doc = aw!(lookup(&client, &id));
         let street_name = lookup_doc.unwrap().first().unwrap().straatnaam.clone();
 
-        assert_eq!(
-            street_name,
-            "Oude Nonnendaalseweg"
-        );
+        assert_eq!(street_name, "Oude Nonnendaalseweg");
     }
 }
