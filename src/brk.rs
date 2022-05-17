@@ -16,6 +16,8 @@ pub struct BrkClient {
 }
 
 impl BrkClient {
+    const BRK_BASISREGISTRATIES_OVERHEID_NL: &'static str = "https://brk.basisregistraties.overheid.nl";
+
     pub fn new(user_agent: &str) -> Self {
         use reqwest::header::{HeaderMap, HeaderValue};
 
@@ -39,6 +41,51 @@ impl BrkClient {
             .unwrap();
 
         Self { client }
+    }
+
+    /// Fetch a singular lot according to its uid,
+    /// which is comprised of gemeentecode, sectie and perceelnummer.
+    pub async fn get_lot(
+        &self,
+        gemeentecode: &str,
+        sectie: &str,
+        perceelnummer: &str,
+    ) -> Result<Vec<Lot>, Error> {
+        let u = url::Url::parse_with_params(
+            &format!("{}/api/v1/percelen", BrkClient::BRK_BASISREGISTRATIES_OVERHEID_NL),
+            &[
+                ("kadastraleGemeentecode", gemeentecode),
+                ("sectie", sectie),
+                ("perceelnummer", perceelnummer),
+            ],
+        )
+        .unwrap();
+
+        let res_client_response = self.client.get(u.as_str()).send().await;
+
+        match res_client_response {
+            Err(e) => Err(Error::NetworkProblem(e)),
+            Ok(client_response) => match client_response.json().await {
+                Err(e) => Err(Error::JsonProblem(e)),
+                Ok(response) => {
+                    let response: Response = response;
+                    let lots = response.embedded.results;
+
+                    if lots.is_empty() {
+                        Err(Error::EmptyResponse)
+                    } else {
+                        Ok(lots)
+                    }
+                }
+            },
+        }
+    }
+
+    ///
+    /// Check if API is up by lookup up the TG office
+    ///
+    pub async fn get_brk_status(&self) -> Result<Vec<Lot>, Error> {
+        self.get_lot("HTT02", "M", "5038").await
     }
 }
 
@@ -111,53 +158,6 @@ struct Response {
     embedded: PerceelEmbedded,
 }
 
-const BRK_BASISREGISTRATIES_OVERHEID_NL: &str = "https://brk.basisregistraties.overheid.nl";
-
-/// Fetch a singular lot according to its uid,
-/// which is comprised of gemeentecode, sectie and perceelnummer.
-pub async fn get_lot(
-    client: &BrkClient,
-    gemeentecode: &str,
-    sectie: &str,
-    perceelnummer: &str,
-) -> Result<Vec<Lot>, Error> {
-    let u = url::Url::parse_with_params(
-        &format!("{}/api/v1/percelen", BRK_BASISREGISTRATIES_OVERHEID_NL),
-        &[
-            ("kadastraleGemeentecode", gemeentecode),
-            ("sectie", sectie),
-            ("perceelnummer", perceelnummer),
-        ],
-    )
-    .unwrap();
-
-    let res_client_response = client.client.get(u.as_str()).send().await;
-
-    match res_client_response {
-        Err(e) => Err(Error::NetworkProblem(e)),
-        Ok(client_response) => match client_response.json().await {
-            Err(e) => Err(Error::JsonProblem(e)),
-            Ok(response) => {
-                let response: Response = response;
-                let lots = response.embedded.results;
-
-                if lots.is_empty() {
-                    Err(Error::EmptyResponse)
-                } else {
-                    Ok(lots)
-                }
-            }
-        },
-    }
-}
-
-///
-/// Check if API is up by lookup up the TG office
-///
-pub async fn get_brk_status(client: &BrkClient) -> Result<Vec<Lot>, Error> {
-    get_lot(client, "HTT02", "M", "5038").await
-}
-
 #[cfg(test)]
 mod test {
 
@@ -176,7 +176,7 @@ mod test {
         let ua = format!("PECT lot render service {}", VERSION);
         let brk_client = BrkClient::new(&ua);
 
-        let result = aw!(get_lot(&brk_client, "HTT02", "M", "5038"));
+        let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));
 
         assert_eq!(result.is_ok(), true);
     }
