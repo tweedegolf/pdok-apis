@@ -10,24 +10,25 @@ use crate::Error::{self};
 use geojson::Geometry;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 pub struct BrkClient {
     client: Client,
 }
 
 impl BrkClient {
-    const BRK_BASISREGISTRATIES_OVERHEID_NL: &'static str = "https://brk.basisregistraties.overheid.nl";
+    const BRK_BASISREGISTRATIES_OVERHEID_NL: &'static str =
+        "https://brk.basisregistraties.overheid.nl";
+    const CONN_TIMEOUT_SECS: u64 = 5;
+    const REQ_TIMEOUT__SECS: u64 = 15;
 
-    pub fn new(user_agent: &str) -> Self {
+    pub fn new(user_agent: &str, accept_crs: CoordinateSpace) -> Self {
         use reqwest::header::{HeaderMap, HeaderValue};
 
         let mut headers = HeaderMap::new();
 
         // Gewenste coördinatenstelsel (CRS) van de coördinaten in de response.
-        headers.insert(
-            "Accept-Crs",
-            HeaderValue::from_static(CoordinateSpace::Rijksdriehoek.as_str()),
-        );
+        headers.insert("Accept-Crs", HeaderValue::from_static(accept_crs.as_str()));
 
         headers.insert(
             "transfer-encoding",
@@ -37,6 +38,9 @@ impl BrkClient {
         let client = reqwest::ClientBuilder::new()
             .user_agent(user_agent)
             .default_headers(headers)
+            .connect_timeout(Duration::from_secs(BrkClient::CONN_TIMEOUT_SECS))
+            // Note: 10s was used in lot render service, 45s was used by kaartproducten
+            .timeout(Duration::new(BrkClient::REQ_TIMEOUT__SECS, 0))
             .build()
             .unwrap();
 
@@ -52,7 +56,10 @@ impl BrkClient {
         perceelnummer: &str,
     ) -> Result<Vec<Lot>, Error> {
         let u = url::Url::parse_with_params(
-            &format!("{}/api/v1/percelen", BrkClient::BRK_BASISREGISTRATIES_OVERHEID_NL),
+            &format!(
+                "{}/api/v1/percelen",
+                BrkClient::BRK_BASISREGISTRATIES_OVERHEID_NL
+            ),
             &[
                 ("kadastraleGemeentecode", gemeentecode),
                 ("sectie", sectie),
@@ -60,6 +67,8 @@ impl BrkClient {
             ],
         )
         .unwrap();
+
+        // println!("u: {}", u);
 
         let res_client_response = self.client.get(u.as_str()).send().await;
 
@@ -70,6 +79,8 @@ impl BrkClient {
                 Ok(response) => {
                     let response: Response = response;
                     let lots = response.embedded.results;
+
+                    // println!("lots: {:?}", lots);
 
                     if lots.is_empty() {
                         Err(Error::EmptyResponse)
@@ -89,10 +100,10 @@ impl BrkClient {
     }
 }
 
-/// Coordinate space that the BAG returns
-/// (currently only Rijksdriehoek is supported)
-enum CoordinateSpace {
+/// Coordinate space that the BRK returns
+pub enum CoordinateSpace {
     Rijksdriehoek,
+    Gps,
 }
 
 impl CoordinateSpace {
@@ -101,6 +112,10 @@ impl CoordinateSpace {
             CoordinateSpace::Rijksdriehoek => {
                 // see https://epsg.io/28992
                 "epsg:28992"
+            }
+            CoordinateSpace::Gps => {
+                // see https://epsg.io/4258
+                "epsg:4258"
             }
         }
     }

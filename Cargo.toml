@@ -1,6 +1,7 @@
 [package]
 name = "pect-geo-apis"
-version = "0.1.2"
+version = "0.1.3"
+authors = ["Folkert <folkert@tweedegolf.com>", "Erik <erik@tweedegolf.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
