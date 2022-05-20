@@ -6,6 +6,7 @@
 use std::cmp::Ordering;
 
 use crate::Error::{self};
+use crate::CoordinateSpace;
 
 use geojson::Geometry;
 use reqwest::Client;
@@ -100,27 +101,6 @@ impl BrkClient {
     }
 }
 
-/// Coordinate space that the BRK returns
-pub enum CoordinateSpace {
-    Rijksdriehoek,
-    Gps,
-}
-
-impl CoordinateSpace {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CoordinateSpace::Rijksdriehoek => {
-                // see https://epsg.io/28992
-                "epsg:28992"
-            }
-            CoordinateSpace::Gps => {
-                // see https://epsg.io/4258
-                "epsg:4258"
-            }
-        }
-    }
-}
-
 /// A singular lot along with its geometry and size.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Lot {
@@ -189,7 +169,7 @@ mod test {
     #[test]
     fn test_get_lot() {
         let ua = format!("PECT lot render service {}", VERSION);
-        let brk_client = BrkClient::new(&ua);
+        let brk_client = BrkClient::new(&ua, CoordinateSpace::Rijksdriehoek);
 
         let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));
 

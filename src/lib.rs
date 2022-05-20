@@ -6,7 +6,7 @@
 
 pub mod bag;
 pub mod brk;
-pub mod locatieserver;
+pub mod lookup;
 
 #[derive(Debug)]
 pub enum Error {
@@ -16,4 +16,25 @@ pub enum Error {
     JsonProblem(reqwest::Error),
     /// Data was decoded, but no items were found
     EmptyResponse,
+}
+
+/// Supported coordinate spaces
+pub enum CoordinateSpace {
+    Rijksdriehoek,
+    Gps,
+}
+
+impl CoordinateSpace {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CoordinateSpace::Rijksdriehoek => {
+                // see https://epsg.io/28992
+                "epsg:28992"
+            }
+            CoordinateSpace::Gps => {
+                // see https://epsg.io/4258
+                "epsg:4258"
+            }
+        }
+    }
 }
