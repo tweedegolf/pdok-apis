@@ -21,7 +21,7 @@ impl BrkClient {
     const BRK_BASISREGISTRATIES_OVERHEID_NL: &'static str =
         "https://brk.basisregistraties.overheid.nl";
     const CONN_TIMEOUT_SECS: u64 = 5;
-    const REQ_TIMEOUT__SECS: u64 = 15;
+    const REQ_TIMEOUT__SECS: u64 = 20;
 
     pub fn new(user_agent: &str, accept_crs: CoordinateSpace) -> Self {
         use reqwest::header::{HeaderMap, HeaderValue};
@@ -40,7 +40,6 @@ impl BrkClient {
             .user_agent(user_agent)
             .default_headers(headers)
             .connect_timeout(Duration::from_secs(BrkClient::CONN_TIMEOUT_SECS))
-            // Note: 10s was used in lot render service, 45s was used by kaartproducten
             .timeout(Duration::new(BrkClient::REQ_TIMEOUT__SECS, 0))
             .build()
             .unwrap();
