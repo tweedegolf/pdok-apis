@@ -6,7 +6,7 @@
 use std::cmp::Ordering;
 
 use crate::Error::{self};
-use crate::CoordinateSpace;
+pub use crate::CoordinateSpace;
 
 use geojson::Geometry;
 use reqwest::Client;
