@@ -1,3 +1,9 @@
+//! The geocoding service by PDOK.
+//! Used to generate references to the desired lots and buildings.
+//!
+//! See [the service documentation](https://www.pdok.nl/introductie/-/article/pdok-locatieserver)
+//! for more information on its capabilities.
+//! 
 use crate::Error::{self, *};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
