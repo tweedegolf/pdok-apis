@@ -1,5 +1,5 @@
 [package]
-name = "pect-geo-apis"
+name = "pdok-apis"
 version = "0.1.5"
 authors = ["Folkert <folkert@tweedegolf.com>", "Erik <erik@tweedegolf.com>"]
 edition = "2021"
