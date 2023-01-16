@@ -167,7 +167,7 @@ mod test {
 
     #[test]
     fn test_get_lot() {
-        let ua = format!("PECT lot render service {}", VERSION);
+        let ua = format!("pdok-apis brk {}", VERSION);
         let brk_client = BrkClient::new(&ua, CoordinateSpace::Rijksdriehoek);
 
         let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));

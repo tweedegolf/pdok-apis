@@ -183,7 +183,7 @@ mod test {
     fn test_concrete_address() {
         let postalcode = "6542WZ";
         let housenumber = "222";
-        let client = LookupClient::new("Your user agent");
+        let client = LookupClient::new("pdok-apis lookup");
 
         let suggest_doc = aw!(client.suggest_concrete(postalcode, housenumber));
         let id = suggest_doc.unwrap().first().unwrap().id.clone();

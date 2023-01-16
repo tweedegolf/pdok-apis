@@ -297,7 +297,7 @@ mod test {
 
     #[test]
     fn test_get_building_year() {
-        let ua = format!("PECT lot render service {}", VERSION);
+        let ua = format!("pdok-apis bag {}", VERSION);
         let bag_client = BagClient::new(&ua, &get_bag_key());
 
         let object_id = "0268010000084126";
