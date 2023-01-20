@@ -3,8 +3,8 @@
 //!
 //! See [the service documentation](https://www.pdok.nl/introductie/-/article/pdok-locatieserver)
 //! for more information on its capabilities.
-//! 
-use crate::Error::{self, *};
+//!
+use crate::{Error::{self, *}, ClientBuilder};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -13,21 +13,49 @@ pub struct LookupClient {
     client: Client,
 }
 
-impl LookupClient {
-    const GEODATA_NATIONAALGEOREGISTER_NL: &'static str = "https://geodata.nationaalgeoregister.nl";
-    const CONN_TIMEOUT_SECS: u64 = 10;
-    const REQ_TIMEOUT__SECS: u64 = 30;
+pub struct LookupClientBuilder<'a> {
+    connection_timeout_secs: u64,
+    request_timeout_secs: u64,
+    user_agent: &'a str,
+}
 
-    pub fn new(user_agent: &str) -> Self {
+impl<'a> ClientBuilder<'a> for LookupClientBuilder<'a> {
+    type OutputType = LookupClient;
+    
+    fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
+        self.connection_timeout_secs = connection_timeout_secs;
+        self
+    }
+
+    fn request_timeout_secs(&mut self, request_timeout_secs: u64) -> &mut Self {
+        self.request_timeout_secs = request_timeout_secs;
+        self
+    }
+
+    fn build(&self) -> Self::OutputType {
         let client = reqwest::ClientBuilder::new()
-            .user_agent(user_agent)
-            .connect_timeout(Duration::from_secs(LookupClient::CONN_TIMEOUT_SECS))
-            .timeout(Duration::new(LookupClient::REQ_TIMEOUT__SECS, 0))
+            .user_agent(self.user_agent)
+            .connect_timeout(Duration::from_secs(self.connection_timeout_secs))
+            .timeout(Duration::new(self.request_timeout_secs, 0))
             .build()
             .unwrap();
 
-        Self { client }
+        LookupClient { client }
     }
+}
+
+impl<'a> LookupClientBuilder<'a> {
+    pub fn new(user_agent: &'a str) -> Self {
+        Self {
+            user_agent,
+            connection_timeout_secs: 10,
+            request_timeout_secs: 30,
+        }
+    }
+}
+
+impl LookupClient {
+    const GEODATA_NATIONAALGEOREGISTER_NL: &'static str = "https://geodata.nationaalgeoregister.nl";
 
     /// Perform a Geocoding lookup based on postal code and housenumber.
     /// Yields a list of possible matches.
@@ -183,7 +211,7 @@ mod test {
     fn test_concrete_address() {
         let postalcode = "6542WZ";
         let housenumber = "222";
-        let client = LookupClient::new("pdok-apis lookup");
+        let client = LookupClientBuilder::new("pdok-apis lookup").build();
 
         let suggest_doc = aw!(client.suggest_concrete(postalcode, housenumber));
         let id = suggest_doc.unwrap().first().unwrap().id.clone();
