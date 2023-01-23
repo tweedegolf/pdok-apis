@@ -13,7 +13,7 @@ pub struct BagClient {
 }
 
 pub struct BagClientBuilder<'a> {
-    accept_crs: CoordinateSpace,
+    accept_crs: BagCoordinateSpace,
     connection_timeout_secs: u64,
     request_timeout_secs: u64,
     user_agent: &'a str,
@@ -27,8 +27,13 @@ impl<'a> BagClientBuilder<'a> {
             api_key,
             connection_timeout_secs: 5,
             request_timeout_secs: 20,
-            accept_crs: CoordinateSpace::Rijksdriehoek,
+            accept_crs: BagCoordinateSpace::Rijksdriehoek,
         }
+    }
+
+    pub fn accept_crs(&mut self, accept_crs: BagCoordinateSpace) -> &mut Self {
+        self.accept_crs = accept_crs;
+        self
     }
 }
 
@@ -196,14 +201,14 @@ impl BagClient {
 
 /// Coordinate space that the BAG returns
 /// (currently only Rijksdriehoek is supported)
-enum CoordinateSpace {
+pub enum BagCoordinateSpace {
     Rijksdriehoek,
 }
 
-impl CoordinateSpace {
+impl BagCoordinateSpace {
     fn as_str(&self) -> &'static str {
         match self {
-            CoordinateSpace::Rijksdriehoek => {
+            BagCoordinateSpace::Rijksdriehoek => {
                 // see https://epsg.io/28992
                 "epsg:28992"
             }

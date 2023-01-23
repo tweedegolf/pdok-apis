@@ -1,6 +1,6 @@
 [package]
 name = "pdok-apis"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Folkert <folkert@tweedegolf.com>", "Erik <erik@tweedegolf.com>"]
 edition = "2021"
 
