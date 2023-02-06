@@ -42,7 +42,7 @@ impl<'a> BrkClientBuilder<'a> {
 
 impl<'a> crate::ClientBuilder<'a> for BrkClientBuilder<'a> {
     type OutputType = BrkClient;
-    
+
     fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
         self.connection_timeout_secs = connection_timeout_secs;
         self
@@ -200,13 +200,13 @@ mod test {
 
     #[test]
     fn test_get_lot() {
-        let ua = format!("pdok-apis brk {}", VERSION);
+        let ua = format!("pdok-apis brk {VERSION}");
         let brk_client = BrkClientBuilder::new(&ua)
             .accept_crs(CoordinateSpace::Rijksdriehoek)
             .build();
 
         let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));
 
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 }

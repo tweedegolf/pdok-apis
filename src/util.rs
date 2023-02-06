@@ -9,7 +9,7 @@ pub fn bbox_wgs84_to_rijksdriehoek(bbox: Rect<f64>) -> Rect<f64> {
         Coord { x: rd.0, y: rd.1 }
     };
 
-    bbox.map_coords(&project_coord)
+    bbox.map_coords(project_coord)
 }
 
 /// Merge an iterator of bboxes to a single bbox.
@@ -32,8 +32,6 @@ where
     let first = iter.next()?;
     Some(iter.fold(first, func))
 }
-
-
 
 pub fn polygon_to_bbox(value: geojson::Value) -> Result<Rect<f64>, ()> {
     use geo::algorithm::bounding_rect::BoundingRect;

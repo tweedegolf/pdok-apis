@@ -4,10 +4,13 @@
 //! See [the service documentation](https://www.pdok.nl/introductie/-/article/pdok-locatieserver)
 //! for more information on its capabilities.
 //!
-use crate::{Error::{self, *}, ClientBuilder};
+use crate::{
+    ClientBuilder,
+    Error::{self, *},
+};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::{time::Duration, cmp::Ordering};
+use std::{cmp::Ordering, time::Duration};
 
 pub struct LookupClient {
     client: Client,
@@ -21,7 +24,7 @@ pub struct LookupClientBuilder<'a> {
 
 impl<'a> ClientBuilder<'a> for LookupClientBuilder<'a> {
     type OutputType = LookupClient;
-    
+
     fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
         self.connection_timeout_secs = connection_timeout_secs;
         self
@@ -65,7 +68,7 @@ impl LookupClient {
         huisnummer: &str,
     ) -> Result<Vec<SuggestDoc>, Error> {
         let params = SuggestParams {
-            query: format!("postcode:{} {}", postcode, huisnummer),
+            query: format!("postcode:{postcode} {huisnummer}"),
         };
 
         let url = format!(
@@ -117,10 +120,7 @@ impl LookupClient {
         lot_letter: &str,
         lot_number: &str,
     ) -> Result<Vec<SuggestDoc>, Error> {
-        let query = format!(
-            "gekoppeld_perceel:{}-{}-{}",
-            lot_code, lot_letter, lot_number
-        );
+        let query = format!("gekoppeld_perceel:{lot_code}-{lot_letter}-{lot_number}");
 
         let url = format!(
             "{}/locatieserver/v3/free",
