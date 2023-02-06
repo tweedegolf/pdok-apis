@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, time::Duration};
 
-use crate::Error::{self, *};
+use crate::{Error::{self, *}, ClientBuilder};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -12,22 +12,54 @@ pub struct BagClient {
     client: Client,
 }
 
-impl BagClient {
-    const BAG_URL: &'static str = "https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2";
-    const CONN_TIMEOUT_SECS: u64 = 5;
-    const REQ_TIMEOUT__SECS: u64 = 20;
+pub struct BagClientBuilder<'a> {
+    accept_crs: BagCoordinateSpace,
+    connection_timeout_secs: u64,
+    request_timeout_secs: u64,
+    user_agent: &'a str,
+    api_key: &'a str,
+}
 
-    pub fn new(user_agent: &str, api_key: &str) -> Self {
+impl<'a> BagClientBuilder<'a> {
+    pub fn new(user_agent: &'a str, api_key: &'a str) -> Self {
+        Self {
+            user_agent,
+            api_key,
+            connection_timeout_secs: 5,
+            request_timeout_secs: 20,
+            accept_crs: BagCoordinateSpace::Rijksdriehoek,
+        }
+    }
+
+    pub fn accept_crs(&mut self, accept_crs: BagCoordinateSpace) -> &mut Self {
+        self.accept_crs = accept_crs;
+        self
+    }
+}
+
+impl<'a> ClientBuilder<'a> for BagClientBuilder<'a> {
+    type OutputType = BagClient;
+    fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
+        self.connection_timeout_secs = connection_timeout_secs;
+        self
+    }
+    
+    fn request_timeout_secs(&mut self, request_timeout_secs: u64) -> &mut Self {
+        self.request_timeout_secs = request_timeout_secs;
+        self
+    }
+    
+    fn build(&self) -> Self::OutputType {
         use reqwest::header::{HeaderMap, HeaderValue};
 
         let mut headers = HeaderMap::new();
 
-        headers.insert("X-Api-Key", HeaderValue::from_str(api_key).unwrap());
+        headers.insert("X-Api-Key", HeaderValue::from_str(self.api_key).unwrap());
 
         // Gewenste coördinatenstelsel (CRS) van de coördinaten in de response.
         headers.insert(
             "Accept-Crs",
-            HeaderValue::from_static(CoordinateSpace::Rijksdriehoek.as_str()),
+            HeaderValue::from_static(self.accept_crs.as_str()),
         );
 
         headers.insert(
@@ -36,15 +68,19 @@ impl BagClient {
         );
 
         let client = reqwest::ClientBuilder::new()
-            .user_agent(user_agent)
+            .user_agent(self.user_agent)
             .default_headers(headers)
-            .connect_timeout(Duration::from_secs(BagClient::CONN_TIMEOUT_SECS))
-            .timeout(Duration::new(BagClient::REQ_TIMEOUT__SECS, 0))
+            .connect_timeout(Duration::from_secs(self.connection_timeout_secs))
+            .timeout(Duration::new(self.request_timeout_secs, 0))
             .build()
             .unwrap();
 
-        Self { client }
+        BagClient { client }
     }
+}
+
+impl BagClient {
+    const BAG_URL: &'static str = "https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2";
 
     ///
     /// Fetch embedded links from a BAG call
@@ -165,14 +201,14 @@ impl BagClient {
 
 /// Coordinate space that the BAG returns
 /// (currently only Rijksdriehoek is supported)
-enum CoordinateSpace {
+pub enum BagCoordinateSpace {
     Rijksdriehoek,
 }
 
-impl CoordinateSpace {
+impl BagCoordinateSpace {
     fn as_str(&self) -> &'static str {
         match self {
-            CoordinateSpace::Rijksdriehoek => {
+            BagCoordinateSpace::Rijksdriehoek => {
                 // see https://epsg.io/28992
                 "epsg:28992"
             }
@@ -198,13 +234,13 @@ pub struct Building {
 
 #[derive(Serialize, Deserialize)]
 pub struct BuildingEmbedded {
-    identificatie: String,
+    pub identificatie: String,
     #[serde(rename = "geometrie")]
-    geometry: Geometry,
+    pub geometry: Geometry,
     #[serde(rename = "oorspronkelijkBouwjaar")]
-    bouwjaar: String,
+    pub bouwjaar: String,
     #[serde(rename = "status")]
-    pandstatus: String,
+    pub pandstatus: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -298,7 +334,7 @@ mod test {
     #[test]
     fn test_get_building_year() {
         let ua = format!("pdok-apis bag {}", VERSION);
-        let bag_client = BagClient::new(&ua, &get_bag_key());
+        let bag_client = BagClientBuilder::new(&ua, &get_bag_key()).build();
 
         let object_id = "0268010000084126";
         let buildings = aw!(bag_client.get_panden(object_id));

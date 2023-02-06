@@ -5,8 +5,8 @@
 //! for more information on its capabilities.
 use std::cmp::Ordering;
 
-use crate::Error::{self};
 pub use crate::CoordinateSpace;
+use crate::Error;
 
 use geojson::Geometry;
 use reqwest::Client;
@@ -17,19 +17,52 @@ pub struct BrkClient {
     client: Client,
 }
 
-impl BrkClient {
-    const BRK_BASISREGISTRATIES_OVERHEID_NL: &'static str =
-        "https://brk.basisregistraties.overheid.nl";
-    const CONN_TIMEOUT_SECS: u64 = 5;
-    const REQ_TIMEOUT__SECS: u64 = 20;
+pub struct BrkClientBuilder<'a> {
+    accept_crs: CoordinateSpace,
+    connection_timeout_secs: u64,
+    request_timeout_secs: u64,
+    user_agent: &'a str,
+}
 
-    pub fn new(user_agent: &str, accept_crs: CoordinateSpace) -> Self {
+impl<'a> BrkClientBuilder<'a> {
+    pub fn new(user_agent: &'a str) -> Self {
+        Self {
+            user_agent,
+            accept_crs: CoordinateSpace::Gps,
+            connection_timeout_secs: 5,
+            request_timeout_secs: 20,
+        }
+    }
+
+    pub fn accept_crs(&mut self, accept_crs: CoordinateSpace) -> &mut Self {
+        self.accept_crs = accept_crs;
+        self
+    }
+}
+
+impl<'a> crate::ClientBuilder<'a> for BrkClientBuilder<'a> {
+    type OutputType = BrkClient;
+    
+    fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
+        self.connection_timeout_secs = connection_timeout_secs;
+        self
+    }
+
+    fn request_timeout_secs(&mut self, request_timeout_secs: u64) -> &mut Self {
+        self.request_timeout_secs = request_timeout_secs;
+        self
+    }
+
+    fn build(&self) -> BrkClient {
         use reqwest::header::{HeaderMap, HeaderValue};
 
         let mut headers = HeaderMap::new();
 
         // Gewenste coördinatenstelsel (CRS) van de coördinaten in de response.
-        headers.insert("Accept-Crs", HeaderValue::from_static(accept_crs.as_str()));
+        headers.insert(
+            "Accept-Crs",
+            HeaderValue::from_static(self.accept_crs.as_str()),
+        );
 
         headers.insert(
             "transfer-encoding",
@@ -37,15 +70,19 @@ impl BrkClient {
         );
 
         let client = reqwest::ClientBuilder::new()
-            .user_agent(user_agent)
+            .user_agent(self.user_agent)
             .default_headers(headers)
-            .connect_timeout(Duration::from_secs(BrkClient::CONN_TIMEOUT_SECS))
-            .timeout(Duration::new(BrkClient::REQ_TIMEOUT__SECS, 0))
+            .connect_timeout(Duration::from_secs(self.connection_timeout_secs))
+            .timeout(Duration::new(self.request_timeout_secs, 0))
             .build()
             .unwrap();
 
-        Self { client }
+        BrkClient { client }
     }
+}
+
+impl BrkClient {
+    const BRK_URL: &'static str = "https://brk.basisregistraties.overheid.nl";
 
     /// Fetch a singular lot according to its uid,
     /// which is comprised of gemeentecode, sectie and perceelnummer.
@@ -56,10 +93,7 @@ impl BrkClient {
         perceelnummer: &str,
     ) -> Result<Vec<Lot>, Error> {
         let u = url::Url::parse_with_params(
-            &format!(
-                "{}/api/v1/percelen",
-                BrkClient::BRK_BASISREGISTRATIES_OVERHEID_NL
-            ),
+            &format!("{}/api/v1/percelen", BrkClient::BRK_URL),
             &[
                 ("kadastraleGemeentecode", gemeentecode),
                 ("sectie", sectie),
@@ -67,8 +101,6 @@ impl BrkClient {
             ],
         )
         .unwrap();
-
-        // println!("u: {}", u);
 
         let res_client_response = self.client.get(u.as_str()).send().await;
 
@@ -93,7 +125,7 @@ impl BrkClient {
     }
 
     ///
-    /// Check if API is up by lookup up the TG office
+    /// Check if API is up by looking up the TG office
     ///
     pub async fn get_brk_status(&self) -> Result<Vec<Lot>, Error> {
         self.get_lot("HTT02", "M", "5038").await
@@ -156,6 +188,7 @@ struct Response {
 mod test {
 
     use super::*;
+    use crate::ClientBuilder;
 
     macro_rules! aw {
         ($e:expr) => {
@@ -168,7 +201,9 @@ mod test {
     #[test]
     fn test_get_lot() {
         let ua = format!("pdok-apis brk {}", VERSION);
-        let brk_client = BrkClient::new(&ua, CoordinateSpace::Rijksdriehoek);
+        let brk_client = BrkClientBuilder::new(&ua)
+            .accept_crs(CoordinateSpace::Rijksdriehoek)
+            .build();
 
         let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));
 

@@ -7,6 +7,7 @@
 pub mod bag;
 pub mod brk;
 pub mod lookup;
+pub mod util;
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,6 +20,7 @@ pub enum Error {
 }
 
 /// Supported coordinate spaces
+#[derive(Copy, Clone)]
 pub enum CoordinateSpace {
     Rijksdriehoek,
     Gps,
@@ -37,4 +39,11 @@ impl CoordinateSpace {
             }
         }
     }
+}
+
+pub trait ClientBuilder<'a> {
+    type OutputType;
+    fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self;
+    fn request_timeout_secs(&mut self, request_timeout_secs: u64) -> &mut Self;
+    fn build(&self) -> Self::OutputType;
 }
