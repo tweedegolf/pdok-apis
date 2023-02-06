@@ -7,7 +7,7 @@
 use crate::{Error::{self, *}, ClientBuilder};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{time::Duration, cmp::Ordering};
 
 pub struct LookupClient {
     client: Client,
@@ -162,6 +162,32 @@ pub struct LookupDoc {
     pub huis_nlt: String,
     pub straatnaam: String,
     pub woonplaatsnaam: String,
+}
+
+impl PartialEq for LookupDoc {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for LookupDoc {}
+
+impl PartialOrd for LookupDoc {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for LookupDoc {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.eq(other) {
+            Ordering::Equal
+        } else if self.id < other.id {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }
+    }
 }
 
 #[derive(Serialize)]
