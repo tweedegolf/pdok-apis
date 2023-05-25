@@ -73,8 +73,6 @@ impl LookupClient {
             LookupClient::GEODATA_NATIONAALGEOREGISTER_NL
         );
 
-        dbg!(url.clone());
-        
         let client_response = self
             .client
             .get(&url)
