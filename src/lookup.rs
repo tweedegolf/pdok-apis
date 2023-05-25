@@ -55,7 +55,7 @@ impl<'a> LookupClientBuilder<'a> {
 }
 
 impl LookupClient {
-    const GEODATA_NATIONAALGEOREGISTER_NL: &'static str = "https://geodata.nationaalgeoregister.nl";
+    const GEODATA_NATIONAALGEOREGISTER_NL: &'static str = "https://api.pdok.nl/bzk";
 
     /// Perform a Geocoding lookup based on postal code and housenumber.
     /// Yields a list of possible matches.
@@ -65,24 +65,25 @@ impl LookupClient {
         huisnummer: &str,
     ) -> Result<Vec<SuggestDoc>, Error> {
         let params = SuggestParams {
-            query: format!("postcode:{} {}", postcode, huisnummer),
+            q: format!("postcode:{} {}", postcode, huisnummer),
         };
 
         let url = format!(
-            "{}/locatieserver/v3/suggest",
+            "{}/locatieserver/search/v3_1/suggest",
             LookupClient::GEODATA_NATIONAALGEOREGISTER_NL
         );
 
+        dbg!(url.clone());
+        
         let client_response = self
             .client
-            .post(&url)
-            .json(&params)
+            .get(&url)
+            .query(&params)
             .send()
             .await
             .map_err(NetworkProblem)?;
 
         let response: SuggestResponse = client_response.json().await.map_err(JsonProblem)?;
-
         Ok(response.response.docs)
     }
 
@@ -91,7 +92,7 @@ impl LookupClient {
     /// Returns a 1:1 representation of the SolrReponse.
     pub async fn lookup(&self, id: &str) -> Result<Vec<LookupDoc>, Error> {
         let url = format!(
-            "{}/locatieserver/v3/lookup",
+            "{}/locatieserver/search/v3_1/lookup",
             LookupClient::GEODATA_NATIONAALGEOREGISTER_NL
         );
 
@@ -123,14 +124,13 @@ impl LookupClient {
         );
 
         let url = format!(
-            "{}/locatieserver/v3/free",
+            "{}/locatieserver/search/v3_1/free",
             LookupClient::GEODATA_NATIONAALGEOREGISTER_NL
         );
-
-        // Example: https://geodata.nationaalgeoregister.nl/locatieserver/v3/free?q=gekoppeld_perceel:HTT02-M-5763
+        // Example: https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=gekoppeld_perceel:HTT02-M-5038
         let u =
             url::Url::parse_with_params(&url, &[("q", query), ("fq", "type:adres".to_string())])
-                .unwrap();
+            .unwrap();
 
         let client_response = self
             .client
@@ -190,9 +190,10 @@ impl Ord for LookupDoc {
     }
 }
 
+// See: https://api.pdok.nl/bzk/locatieserver/search/v3_1/ui/#/Locatieserver/suggest
 #[derive(Serialize)]
 struct SuggestParams {
-    query: String,
+    q: String,
 }
 
 /// One element of the set of suggestions as done by the geocoding service.
@@ -234,12 +235,13 @@ mod test {
     }
 
     #[test]
-    fn test_concrete_address() {
+    fn concrete_address() {
         let postalcode = "6542WZ";
         let housenumber = "222";
         let client = LookupClientBuilder::new("pdok-apis lookup").build();
 
         let suggest_doc = aw!(client.suggest_concrete(postalcode, housenumber));
+        
         let id = suggest_doc.unwrap().first().unwrap().id.clone();
 
         assert_eq!(id, "adr-2fe93c94378bb179c424cf9918662375");
@@ -248,5 +250,33 @@ mod test {
         let street_name = lookup_doc.unwrap().first().unwrap().straatnaam.clone();
 
         assert_eq!(street_name, "Oude Nonnendaalseweg");
+    }
+
+    #[test]
+    fn suggest_address_for_lot() {
+        let client = LookupClientBuilder::new("pdok-apis lookup").build();
+
+        // TG office plot
+        let result = aw!(client.suggest_addresses_for_lot("HTT02", "M", "5038"));
+
+        // Should return Castellastraat 1
+        let id = result.unwrap().first().unwrap().id.clone();
+        assert_eq!(id, "adr-03b34aeb91028a913c05006049ed3245");
+    }
+
+    #[test]
+    fn lookup_id() {
+        let client = LookupClientBuilder::new("pdok-apis lookup").build();
+
+        // TG office ID
+        let result = aw!(client.lookup_tg_office()).unwrap();
+
+        // Check if the address matches
+        let street = result.first().unwrap().straatnaam.clone();
+        let number = result.first().unwrap().huis_nlt.clone();
+        let postcode = result.first().unwrap().postcode.clone();
+        assert_eq!(street, "Castellastraat");
+        assert_eq!(number, "26");
+        assert_eq!(postcode, "6512EX");
     }
 }
