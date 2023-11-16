@@ -1,6 +1,6 @@
 [package]
 name = "pdok-apis"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Folkert <folkert@tweedegolf.com>", "Erik <erik@tweedegolf.com>"]
 edition = "2021"
 
@@ -14,8 +14,8 @@ serde_derive = "1.0"
 reqwest = { version = "0.11.4", features = ["json", "stream"] }
 url = { version = "2.1", features = ["serde"] }
 
-geo = { version = "0.23.1", features = ["use-serde"] }
-geojson = { version = "0.22.2", features = ["geo-types"] }
+geo = { version = "0.27", features = ["use-serde"] }
+geojson = { version = "0.24", features = ["geo-types"] }
 rijksdriehoek = "0.1.0"
 
 [dev-dependencies]
