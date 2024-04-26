@@ -1,6 +1,9 @@
 use std::{cmp::Ordering, time::Duration};
 
-use crate::{Error::{self, *}, ClientBuilder};
+use crate::{
+    ClientBuilder,
+    Error::{self, *},
+};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -43,12 +46,12 @@ impl<'a> ClientBuilder<'a> for BagClientBuilder<'a> {
         self.connection_timeout_secs = connection_timeout_secs;
         self
     }
-    
+
     fn request_timeout_secs(&mut self, request_timeout_secs: u64) -> &mut Self {
         self.request_timeout_secs = request_timeout_secs;
         self
     }
-    
+
     fn build(&self) -> Self::OutputType {
         use reqwest::header::{HeaderMap, HeaderValue};
 

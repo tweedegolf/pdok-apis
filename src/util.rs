@@ -33,8 +33,6 @@ where
     Some(iter.fold(first, func))
 }
 
-
-
 pub fn polygon_to_bbox(value: geojson::Value) -> Result<Rect<f64>, ()> {
     use geo::algorithm::bounding_rect::BoundingRect;
 

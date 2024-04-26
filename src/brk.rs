@@ -107,26 +107,43 @@ impl BrkClient {
         )
         .unwrap();
         let res_client_response = self.client.get(u.as_str()).send().await;
-        dbg!(&res_client_response);
         match res_client_response {
             Err(e) => Err(Error::NetworkProblem(e)),
             Ok(client_response) => match client_response.json().await {
                 Err(e) => Err(Error::JsonProblem(e)),
                 Ok(response) => {
                     let response: FeatureCollection = response;
-                    dbg!(&response);
-                    let lots: Vec<Lot> = response.features.iter().map(|feature| {
-                        Lot {
-                            id: feature.property("identificatieLokaalID").unwrap().to_string(),
-                            gemeentenaam: Some(feature.property("kadastraleGemeenteWaarde").unwrap().to_string()),
-                            kadastralegemeentecode: Some(feature.property("kadastraleGemeenteCode").unwrap().to_string()),
-                            grootte: feature.property("kadastraleGrootteWaarde").unwrap().as_f64(),
+                    let lots: Vec<Lot> = response
+                        .features
+                        .iter()
+                        .map(|feature| Lot {
+                            id: feature
+                                .property("identificatieLokaalID")
+                                .unwrap()
+                                .to_string(),
+                            gemeentenaam: Some(
+                                feature
+                                    .property("kadastraleGemeenteWaarde")
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                            kadastralegemeentecode: Some(
+                                feature
+                                    .property("kadastraleGemeenteCode")
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                            grootte: feature
+                                .property("kadastraleGrootteWaarde")
+                                .unwrap()
+                                .as_f64(),
                             sectie: Some(feature.property("sectie").unwrap().to_string()),
-                            perceelnummer: Some(feature.property("perceelnummer").unwrap().as_u64().unwrap()),
+                            perceelnummer: Some(
+                                feature.property("perceelnummer").unwrap().as_u64().unwrap(),
+                            ),
                             geometry: feature.geometry.clone().unwrap(),
-                        }
-                    }).collect();
-                    dbg!(&lots);
+                        })
+                        .collect();
                     if lots.is_empty() {
                         Err(Error::EmptyResponse)
                     } else {
