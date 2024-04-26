@@ -1,0 +1,21 @@
+#
+GET https://brk.basisregistraties.overheid.nl/api/v1/percelen?kadastraleGemeenteCode=HTT02&sectie=M&perceelnummer=5038
+Accept: application/json
+
+#
+GET https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0?request=GetFeature&service=WFS&version=2.0.0&typenames=kadastralekaartv5:perceel&outputFormat=application/json
+Accept: application/json
+
+#
+GET https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0?request=GetCapabilities&service=WFS
+Accept: application/json
+
+
+:url=https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0?request=GetFeature&service=WFS&version=2.0.0&typenames=kadastralekaartv5%3Aperceel&outputFormat=application%2Fjson
+
+#
+GET :url&filter=<Filter><PropertyIsEqualTo><PropertyName>sectie</PropertyName><Literal>M</Literal></PropertyIsEqualTo><PropertyIsEqualTo><PropertyName>perceelnummer</PropertyName><Literal>5038</Literal></PropertyIsEqualTo></Filter>
+
+#
+GET :url&filter=<Filter> <And> <And> <PropertyIsEqualTo> <PropertyName>sectie</PropertyName> <Literal>M</Literal> </PropertyIsEqualTo> <PropertyIsEqualTo> <PropertyName>perceelnummer</PropertyName> <Literal>5038</Literal> </PropertyIsEqualTo> </And> <PropertyIsEqualTo> <PropertyName>kadastraleGemeenteCode</PropertyName> <Literal></Literal> </PropertyIsEqualTo> </And> </Filter>
+

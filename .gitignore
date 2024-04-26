@@ -1,3 +1,4 @@
 target
 analyzer_target
 Cargo.lock
+test.http
