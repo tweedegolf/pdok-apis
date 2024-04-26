@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 pub use crate::CoordinateSpace;
 use crate::Error;
 
-use geojson::Geometry;
+use geojson::{FeatureCollection, Geometry};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -42,7 +42,7 @@ impl<'a> BrkClientBuilder<'a> {
 
 impl<'a> crate::ClientBuilder<'a> for BrkClientBuilder<'a> {
     type OutputType = BrkClient;
-    
+
     fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
         self.connection_timeout_secs = connection_timeout_secs;
         self
@@ -82,7 +82,7 @@ impl<'a> crate::ClientBuilder<'a> for BrkClientBuilder<'a> {
 }
 
 impl BrkClient {
-    const BRK_URL: &'static str = "https://brk.basisregistraties.overheid.nl";
+    const BRK_URL: &'static str = "https://service.pdok.nl/kadaster/kadastralekaart/wfs/v5_0";
 
     /// Fetch a singular lot according to its uid,
     /// which is comprised of gemeentecode, sectie and perceelnummer.
@@ -92,28 +92,58 @@ impl BrkClient {
         sectie: &str,
         perceelnummer: &str,
     ) -> Result<Vec<Lot>, Error> {
+        let filter = format!("<Filter><And><And><PropertyIsEqualTo><PropertyName>sectie</PropertyName><Literal>{sectie}</Literal></PropertyIsEqualTo><PropertyIsEqualTo><PropertyName>perceelnummer</PropertyName><Literal>{perceelnummer}</Literal></PropertyIsEqualTo></And><PropertyIsEqualTo><PropertyName>AKRKadastraleGemeenteCodeWaarde</PropertyName><Literal>{gemeentecode}</Literal></PropertyIsEqualTo></And></Filter>");
+
         let u = url::Url::parse_with_params(
-            &format!("{}/api/v1/percelen", BrkClient::BRK_URL),
+            &format!("{}", BrkClient::BRK_URL),
             &[
-                ("kadastraleGemeentecode", gemeentecode),
-                ("sectie", sectie),
-                ("perceelnummer", perceelnummer),
+                ("request", "GetFeature"),
+                ("service", "WFS"),
+                ("version", "2.0.0"),
+                ("typenames", "kadastralekaartv5:perceel"),
+                ("outputFormat", "application/json"),
+                ("filter", &filter),
             ],
         )
         .unwrap();
-
         let res_client_response = self.client.get(u.as_str()).send().await;
-
         match res_client_response {
             Err(e) => Err(Error::NetworkProblem(e)),
             Ok(client_response) => match client_response.json().await {
                 Err(e) => Err(Error::JsonProblem(e)),
                 Ok(response) => {
-                    let response: Response = response;
-                    let lots = response.embedded.results;
-
-                    // println!("lots: {:?}", lots);
-
+                    let response: FeatureCollection = response;
+                    let lots: Vec<Lot> = response
+                        .features
+                        .iter()
+                        .map(|feature| Lot {
+                            id: feature
+                                .property("identificatieLokaalID")
+                                .unwrap()
+                                .to_string(),
+                            gemeentenaam: Some(
+                                feature
+                                    .property("kadastraleGemeenteWaarde")
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                            kadastralegemeentecode: Some(
+                                feature
+                                    .property("kadastraleGemeenteCode")
+                                    .unwrap()
+                                    .to_string(),
+                            ),
+                            grootte: feature
+                                .property("kadastraleGrootteWaarde")
+                                .unwrap()
+                                .as_f64(),
+                            sectie: Some(feature.property("sectie").unwrap().to_string()),
+                            perceelnummer: Some(
+                                feature.property("perceelnummer").unwrap().as_u64().unwrap(),
+                            ),
+                            geometry: feature.geometry.clone().unwrap(),
+                        })
+                        .collect();
                     if lots.is_empty() {
                         Err(Error::EmptyResponse)
                     } else {
@@ -206,7 +236,6 @@ mod test {
             .build();
 
         let result = aw!(brk_client.get_lot("HTT02", "M", "5038"));
-
         assert_eq!(result.is_ok(), true);
     }
 }

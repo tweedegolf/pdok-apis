@@ -4,10 +4,13 @@
 //! See [the service documentation](https://www.pdok.nl/introductie/-/article/pdok-locatieserver)
 //! for more information on its capabilities.
 //!
-use crate::{Error::{self, *}, ClientBuilder};
+use crate::{
+    ClientBuilder,
+    Error::{self, *},
+};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::{time::Duration, cmp::Ordering};
+use std::{cmp::Ordering, time::Duration};
 
 pub struct LookupClient {
     client: Client,
@@ -21,7 +24,7 @@ pub struct LookupClientBuilder<'a> {
 
 impl<'a> ClientBuilder<'a> for LookupClientBuilder<'a> {
     type OutputType = LookupClient;
-    
+
     fn connection_timeout_secs(&mut self, connection_timeout_secs: u64) -> &mut Self {
         self.connection_timeout_secs = connection_timeout_secs;
         self
@@ -128,7 +131,7 @@ impl LookupClient {
         // Example: https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=gekoppeld_perceel:HTT02-M-5038
         let u =
             url::Url::parse_with_params(&url, &[("q", query), ("fq", "type:adres".to_string())])
-            .unwrap();
+                .unwrap();
 
         let client_response = self
             .client
@@ -239,7 +242,7 @@ mod test {
         let client = LookupClientBuilder::new("pdok-apis lookup").build();
 
         let suggest_doc = aw!(client.suggest_concrete(postalcode, housenumber));
-        
+
         let id = suggest_doc.unwrap().first().unwrap().id.clone();
 
         assert_eq!(id, "adr-2fe93c94378bb179c424cf9918662375");
