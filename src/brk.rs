@@ -146,7 +146,7 @@ impl BrkClient {
                         feature.property("kadastraleGemeenteWaarde")?.to_string(),
                     ),
                     kadastralegemeentecode: Some(
-                        feature.property("kadastraleGemeenteCode")?.to_string(),
+                        feature.property("AKRKadastraleGemeenteCodeWaarde")?.to_string(),
                     ),
                     grootte: feature.property("kadastraleGrootteWaarde")?.as_f64(),
                     sectie: Some(feature.property("sectie")?.to_string()),
