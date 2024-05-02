@@ -141,15 +141,15 @@ impl BrkClient {
             .iter()
             .filter_map(|feature| {
                 Some(Lot {
-                    id: feature.property("identificatieLokaalID")?.to_string(),
+                    id: feature.property("identificatieLokaalID")?.as_str()?.to_string(),
                     gemeentenaam: Some(
-                        feature.property("kadastraleGemeenteWaarde")?.to_string(),
+                        feature.property("kadastraleGemeenteWaarde")?.as_str()?.to_string()
                     ),
                     kadastralegemeentecode: Some(
-                        feature.property("AKRKadastraleGemeenteCodeWaarde")?.to_string(),
+                        feature.property("AKRKadastraleGemeenteCodeWaarde")?.as_str()?.to_string(),
                     ),
                     grootte: feature.property("kadastraleGrootteWaarde")?.as_f64(),
-                    sectie: Some(feature.property("sectie")?.to_string()),
+                    sectie: Some(feature.property("sectie")?.as_str()?.to_string()),
                     perceelnummer: Some(
                         feature.property("perceelnummer")?.as_u64()?,
                     ),
@@ -212,17 +212,6 @@ impl Ord for Lot {
             Ordering::Greater
         }
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct PerceelEmbedded {
-    results: Vec<Lot>,
-}
-
-#[derive(Deserialize, Debug)]
-struct Response {
-    #[serde(rename = "_embedded")]
-    embedded: PerceelEmbedded,
 }
 
 #[cfg(test)]
