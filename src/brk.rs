@@ -92,7 +92,28 @@ impl BrkClient {
         sectie: &str,
         perceelnummer: &str,
     ) -> Result<Vec<Lot>, Error> {
-        let filter = format!("<Filter><And><And><PropertyIsEqualTo><PropertyName>sectie</PropertyName><Literal>{sectie}</Literal></PropertyIsEqualTo><PropertyIsEqualTo><PropertyName>perceelnummer</PropertyName><Literal>{perceelnummer}</Literal></PropertyIsEqualTo></And><PropertyIsEqualTo><PropertyName>AKRKadastraleGemeenteCodeWaarde</PropertyName><Literal>{gemeentecode}</Literal></PropertyIsEqualTo></And></Filter>");
+        // Filters lot by gemeentecode, sectie and perceelnummer
+        let filter = format!(
+            r#"
+<Filter>
+  <And>
+    <And>
+      <PropertyIsEqualTo>
+        <PropertyName>sectie</PropertyName>
+        <Literal>{sectie}</Literal>
+      </PropertyIsEqualTo>
+      <PropertyIsEqualTo>
+        <PropertyName>perceelnummer</PropertyName>
+        <Literal>{perceelnummer}</Literal>
+      </PropertyIsEqualTo>
+    </And>
+    <PropertyIsEqualTo>
+      <PropertyName>AKRKadastraleGemeenteCodeWaarde</PropertyName>
+      <Literal>{gemeentecode}</Literal>
+    </PropertyIsEqualTo>
+  </And>
+</Filter>"#
+        );
 
         let u = url::Url::parse_with_params(
             &format!("{}", BrkClient::BRK_URL),
@@ -105,52 +126,42 @@ impl BrkClient {
                 ("filter", &filter),
             ],
         )
-        .unwrap();
-        let res_client_response = self.client.get(u.as_str()).send().await;
-        match res_client_response {
-            Err(e) => Err(Error::NetworkProblem(e)),
-            Ok(client_response) => match client_response.json().await {
-                Err(e) => Err(Error::JsonProblem(e)),
-                Ok(response) => {
-                    let response: FeatureCollection = response;
-                    let lots: Vec<Lot> = response
-                        .features
-                        .iter()
-                        .map(|feature| Lot {
-                            id: feature
-                                .property("identificatieLokaalID")
-                                .unwrap()
-                                .to_string(),
-                            gemeentenaam: Some(
-                                feature
-                                    .property("kadastraleGemeenteWaarde")
-                                    .unwrap()
-                                    .to_string(),
-                            ),
-                            kadastralegemeentecode: Some(
-                                feature
-                                    .property("kadastraleGemeenteCode")
-                                    .unwrap()
-                                    .to_string(),
-                            ),
-                            grootte: feature
-                                .property("kadastraleGrootteWaarde")
-                                .unwrap()
-                                .as_f64(),
-                            sectie: Some(feature.property("sectie").unwrap().to_string()),
-                            perceelnummer: Some(
-                                feature.property("perceelnummer").unwrap().as_u64().unwrap(),
-                            ),
-                            geometry: feature.geometry.clone().unwrap(),
-                        })
-                        .collect();
-                    if lots.is_empty() {
-                        Err(Error::EmptyResponse)
-                    } else {
-                        Ok(lots)
-                    }
-                }
-            },
+            .unwrap();
+        
+        let client_response = self
+            .client
+            .get(u.as_str())
+            .send()
+            .await
+            .map_err(|e| Error::NetworkProblem(e))?;
+
+        let json: FeatureCollection = client_response.json().await.map_err(|e| Error::JsonProblem(e))?;
+        let lots: Vec<Lot> = json
+            .features
+            .iter()
+            .filter_map(|feature| {
+                Some(Lot {
+                    id: feature.property("identificatieLokaalID")?.as_str()?.to_string(),
+                    gemeentenaam: Some(
+                        feature.property("kadastraleGemeenteWaarde")?.as_str()?.to_string()
+                    ),
+                    kadastralegemeentecode: Some(
+                        feature.property("AKRKadastraleGemeenteCodeWaarde")?.as_str()?.to_string(),
+                    ),
+                    grootte: feature.property("kadastraleGrootteWaarde")?.as_f64(),
+                    sectie: Some(feature.property("sectie")?.as_str()?.to_string()),
+                    perceelnummer: Some(
+                        feature.property("perceelnummer")?.as_u64()?,
+                    ),
+                    geometry: feature.geometry.clone()?,
+                })
+            })
+            .collect();
+
+        if lots.is_empty() {
+            Err(Error::EmptyResponse)
+        } else {
+            Ok(lots)
         }
     }
 
@@ -201,17 +212,6 @@ impl Ord for Lot {
             Ordering::Greater
         }
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct PerceelEmbedded {
-    results: Vec<Lot>,
-}
-
-#[derive(Deserialize, Debug)]
-struct Response {
-    #[serde(rename = "_embedded")]
-    embedded: PerceelEmbedded,
 }
 
 #[cfg(test)]
