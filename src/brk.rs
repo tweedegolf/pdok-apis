@@ -116,7 +116,7 @@ impl BrkClient {
         );
 
         let u = url::Url::parse_with_params(
-            BrkClient::BRK_URL,
+            &format!("{}", BrkClient::BRK_URL),
             &[
                 ("request", "GetFeature"),
                 ("service", "WFS"),
@@ -126,40 +126,33 @@ impl BrkClient {
                 ("filter", &filter),
             ],
         )
-        .unwrap();
-
+            .unwrap();
+        
         let client_response = self
             .client
             .get(u.as_str())
             .send()
             .await
-            .map_err(Error::NetworkProblem)?;
+            .map_err(|e| Error::NetworkProblem(e))?;
 
-        let json: FeatureCollection = client_response.json().await.map_err(Error::JsonProblem)?;
+        let json: FeatureCollection = client_response.json().await.map_err(|e| Error::JsonProblem(e))?;
         let lots: Vec<Lot> = json
             .features
             .iter()
             .filter_map(|feature| {
                 Some(Lot {
-                    id: feature
-                        .property("identificatieLokaalID")?
-                        .as_str()?
-                        .to_string(),
+                    id: feature.property("identificatieLokaalID")?.as_str()?.to_string(),
                     gemeentenaam: Some(
-                        feature
-                            .property("kadastraleGemeenteWaarde")?
-                            .as_str()?
-                            .to_string(),
+                        feature.property("kadastraleGemeenteWaarde")?.as_str()?.to_string()
                     ),
                     kadastralegemeentecode: Some(
-                        feature
-                            .property("AKRKadastraleGemeenteCodeWaarde")?
-                            .as_str()?
-                            .to_string(),
+                        feature.property("AKRKadastraleGemeenteCodeWaarde")?.as_str()?.to_string(),
                     ),
                     grootte: feature.property("kadastraleGrootteWaarde")?.as_f64(),
                     sectie: Some(feature.property("sectie")?.as_str()?.to_string()),
-                    perceelnummer: Some(feature.property("perceelnummer")?.as_u64()?),
+                    perceelnummer: Some(
+                        feature.property("perceelnummer")?.as_u64()?,
+                    ),
                     geometry: feature.geometry.clone()?,
                 })
             })
