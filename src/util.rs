@@ -9,7 +9,7 @@ pub fn bbox_wgs84_to_rijksdriehoek(bbox: Rect<f64>) -> Rect<f64> {
         Coord { x: rd.0, y: rd.1 }
     };
 
-    bbox.map_coords(&project_coord)
+    bbox.map_coords(project_coord)
 }
 
 /// Merge an iterator of bboxes to a single bbox.
@@ -40,9 +40,9 @@ pub fn polygon_to_bbox(value: geojson::Value) -> Result<Rect<f64>, ()> {
     shape.bounding_rect().ok_or(())
 }
 
-pub fn bbox_to_linestring(bbox: Rect<f64>) -> Result<geojson::Value, ()> {
-    let polygon: Polygon<f64> = bbox.try_into().or(Err(()))?;
-    Ok(geojson::Value::from(polygon.exterior()))
+pub fn bbox_to_linestring(bbox: Rect<f64>) -> geojson::Value {
+    let polygon: Polygon<f64> = bbox.into();
+    geojson::Value::from(polygon.exterior())
 }
 
 /// Return coordinate with easting (longitude) in x and northing (latitude) in y
